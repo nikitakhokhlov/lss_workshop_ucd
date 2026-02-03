@@ -1,0 +1,54 @@
+/*-- scss:uses --*/
+@import url("https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap");
+
+
+/*-- scss:defaults --*/
+
+/* Font */
+$presentation-font-family: "Atkinson Hyperlegible", sans-serif;
+
+/* Green!40!black equivalent */
+$primary-color: #2f5d3a;
+$secondary-color: #1f1f1f;
+
+
+/*-- scss:rules --*/
+
+.reveal {
+  font-family: $presentation-font-family;
+  color: $secondary-color;
+}
+
+.reveal h1,
+.reveal h2,
+.reveal h3 {
+  color: $primary-color;
+}
+
+.table-small {
+  font-size: 0.65em;
+}
+
+.table-small table {
+  width: 100%;
+}
+
+/* Before click — invisible but styled */
+.reveal .fragment.highlight-green {
+  opacity: 1;
+  color: #1f1f1f;
+}
+
+/* After click — visible, same color */
+.reveal .fragment.highlight-green.visible {
+  opacity: 1;
+  color: #2f5d3a;
+  font-weight: 600;
+}
+
+/* Small caption ONLY inside right column */
+.reveal .columns .column .small-figcap figure figcaption {
+  font-size: 0.5em;
+  line-height: 1.2;
+  margin-top: 0.4em;
+}

@@ -1,0 +1,156 @@
+---
+title: "Introduction to Latent Semantic Scaling"
+editor: visual
+author:
+  - name: "Nikita Khokhlov"
+    email: "nikita.khokhlov@ucd.ie"
+institute: "University College Dublin"
+date: "4 February 2026"
+date-format: long
+format:
+  revealjs:
+    theme: [default, custom.scss]
+    slide-number: true
+title-slide-attributes:
+  data-background-image: "images/connected_politics_logo.png"
+  data-background-size: auto 160px
+  data-background-position: center 97%
+  data-background-repeat: no-repeat
+  #data-background-image: "images/ucd_spire_logo.png, images/connected_politics_logo.png"
+  #data-background-size: auto 250px, auto 250px
+  #data-background-position: left 90%, right 90%
+  #data-background-repeat: no-repeat, no-repeat
+  #data-background-opacity: "1"
+bibliography: references.bib
+---
+
+## What is Latent Semantic Scaling?
+
+::: incremental
+A semi-supervised scaling technique [@watanabe2021].
+
+1.  The user provides *seed words* to define the scale.
+
+2.  The algorithm estimates *polarity of words* in the corpus based on their semantic proximity to seed words.
+
+3.  Documents are then located on a unidimensional scale.
+:::
+
+## Why LSS?
+
+::: incremental
+-   Requires only [a small set]{.fragment .highlight-green} of seed words regardless of the size of the corpus
+-   Learns the semantic relationship between words [without manual supervision]{.fragment .highlight-green}
+-   Works well for non-European languages
+-   Fitted with the entire corpus --\> independent of temporality of language usage --\> great for longitudinal analysis
+:::
+
+## Seed Words
+
+::: incremental
+-   **Seed words** are a small set of words that users choose to define the quantity that LSS measures.
+
+-   Good seed words should have:
+
+    1.  strong polarity
+    2.  small ambiguity
+    3.  corpus independence
+:::
+
+## Seed Words Selection
+
+::: incremental
+1.  Make a list of candidate polarity words related to the target dimension.
+
+2.  Select candidates that have the strongest polarity and the smallest ambiguity.
+
+3.  Fit a LSS model with only one candidate and test if polarity scores of words are intuitively correct.
+
+4.  Combine all the candidates that pass the checks to form a seed word set
+
+5.  Check the validity of seed words by comparing scores produced by manual and machine coding.
+:::
+
+## Polarity Scores of Words in Corpus
+
+::: incremental
+-   LSS employs the word-embedding technique to estimate semantic proximity between seed words and other words in the corpus.
+
+-   **Word-embeddings** produce low-dimensional representations of word semantics, “word vectors”, based on cooccurrences of words within sentences or word-windows.
+
+-   After obtaining word vectors, LSS computes polarity scores of words based on their proximity to seed words, weighted by their user-provided polarity.
+:::
+
+## Word Weighting Illustration
+
+![**Conceptual illustration of word weighting by seed words.** The arrow is the sentiment dimension in the semantic space and circles are proximities of positive seed (“good”) words and negative seed words (“bad”) to “crisis”, which is projected on the sentiment dimension [@watanabe2021, p.86].](images/words_weighting.png){fig-align="center" width="1100"}
+
+## Polarity Scores Illustration
+
+![**Distribution of polarity scores and word frequencies on the "hostility" dimension** [@trubowitz2021, p.858].](images/sqab029fig2.jpeg)
+
+## Polarity Scores of Documents
+
+::: incremental
+-   LSS predicts polarity scores of documents by weighting word polarity scores by their frequency in the documents.
+
+-   Documents’ polarity scores are continuously and symmetrically distributed around the mean, so they are recentered by the global mean, μ = 0, and rescaled by standard deviation, σ = 1, to make it easier for users to interpret.
+
+    $\rightarrow$ great for post-hoc regression analysis to incorporate covariates.
+:::
+
+## Application Examples 1
+
+::: table-small
+| Article | Dimensions & seed words | Data |
+|----|----|----|
+| @trubowitz2021 | "Hostility" (+1: “adversary,” “enemy,” “foe,” “hostile; −1: “aid,” “ally,” “friend,” “peaceful”) | New York Times news summaries (*N* = 387,896) |
+| @rauh2021 | "Emergency" vs "Normality" (+1: "emergency", "crisis", "danger", "peril", "hazard", "threat", "risk", "disaster", "uncertainty", "uncertain"; -1: "normality", "normal", "safety", "stability", "regularity", "routine", "calm", "usual", "certainty", "certain") | Speeches of EU leaders and heads of states (*N* = 19,541) |
+|  |  |  |
+:::
+
+## Application Examples 2
+
+::: table-small
+| Article | Dimensions & seed words | Data |
+|----|----|----|
+| @baturo_gray_2024 | "Global agenda" rhetoric ("cooperat,” “global,” “agenda,” “united nations,” “organization”, “assembly”) | Speeches from the United Nations General Assembly (1946-2019), grouped by speakers (*N* = 9,959) |
+| @baturo_khokhlov_2024 | "Putin's agenda" (“putin,” “sovereign,” “tradition-,” “crimea,” “ukraine,” “patriot-,” “victory,” “fascis-”) | Annual regional legislative addresses by governors in Russia, 2007-2021 (*N* = 924) |
+|  |  |  |
+:::
+
+## Analytical Pipeline Example
+
+![**Phases of semi-supervised classification of text** [@trubowitz2021].](images/sqab029fig1.jpeg){width="2058"}
+
+## Example: Polarity Scores
+
+:::::: columns
+::: {.column width="40%"}
+| Seed words |
+|----|
+| "cooperat,” “global,” “agenda,” “united nations,” “organization”, “assembly” |
+:::
+
+:::: {.column width="56%"}
+::: small-figcap
+![**Global agenda terms** [@baturo_gray_2024, p.732]. Figure includes 100 top terms with the highest estimated coefficients, that is, most lexically similar to the "global agenda" seed words.](images/baturo_gray_cloud.png){fig-align="center" width="500"}
+:::
+::::
+::::::
+
+## Example: Keyness as a Validation
+
+![**Lexical difference** [@baturo_gray_2024, p.735]. Note: The keyness analyses isolate words that frequently appear in a given text(s), capturing the degree to which a given word is “key” overall, in contrast to another text(s).](images/baturo_gray_keyness.png){width="2525"}
+
+## LSS Weaknesses
+
+::: incremental
+-   Not as robust to external corpora as the dictionary approach because it estimates semantic proximity between words on the given corpus only.
+
+-   Predicts *individual* polarity scores with relatively large errors, esp. in short documents, because it is a linear and naive model.
+
+-   But grouped LSS scores (e.g., by speaker) are strongly correlated with manual scores in tests $\rightarrow$ measurement errors are *negligible in aggregated-level analysis*
+:::
+
+## References

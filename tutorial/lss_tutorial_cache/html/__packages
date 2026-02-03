@@ -1,0 +1,10 @@
+LSX
+quanteda
+quanteda.corpora
+quanteda.textstats
+quanteda.textplots
+dplyr
+ggplot2
+geomtextpath
+plm
+modelsummary
