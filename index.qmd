@@ -1,11 +1,16 @@
 ---
-title: "my_website"
+title: "Introduction to Latent Semantic Scaling"
+editor: visual
+author:
+  - name: "Nikita Khokhlov"
+    email: "nikita.khokhlov@ucd.ie"
+institute: "University College Dublin"
+date: "4 February 2026"
+date-format: long
 ---
 
-This is a Quarto website.
+Materials for teaching and replication.
 
-To learn more about Quarto websites visit <https://quarto.org/docs/websites>.
+- 📘 Tutorial: https://nikitakhokhlov.github.io/lss_workshop_ucd/lss_tutorial.html
+- 📊 Slides: https://nikitakhokhlov.github.io/lss_workshop_ucd//lss_slides.html
 
-```{r}
-1 + 1
-```

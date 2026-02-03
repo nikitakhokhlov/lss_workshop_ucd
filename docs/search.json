@@ -152,5 +152,12 @@
     "title": "Introduction to Latent Semantic Scaling",
     "section": "References",
     "text": "References\n\n\n\n\nBaturo, Alexander, and Julia Gray. 2024. “Leaders in the United Nations General Assembly: Revitalization or Politicization?” The Review of International Organizations 19 (4): 721–52. https://doi.org/10.1007/s11558-023-09524-1.\n\n\nBaturo, Alexander, Nikita Khokhlov, and Jakob Tolstrup. 2024. “Playing the Sycophant Card: The Logic and Consequences of Professing Loyalty to the Autocrat.” American Journal of Political Science 69 (3): 1180–95. https://doi.org/10.1111/ajps.12909.\n\n\nRauh, Christian. 2021. “Supranational Emergency Politics? What Executives’ Public Crisis Communication May Tell Us.” Journal of European Public Policy 29 (6): 966–78. https://doi.org/10.1080/13501763.2021.1916058.\n\n\nTrubowitz, Peter, and Kohei Watanabe. 2021. “The Geopolitical Threat Index: A Text-Based Computational Approach to Identifying Foreign Threats.” International Studies Quarterly 65 (3): 852–65. https://doi.org/10.1093/isq/sqab029.\n\n\nWatanabe, Kohei. 2021. “Latent Semantic Scaling: A Semisupervised Text Analysis Technique for New Domains and Languages.” Communication Methods and Measures 15 (2): 81–102. https://doi.org/10.1080/19312458.2020.1832976."
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Introduction to Latent Semantic Scaling",
+    "section": "",
+    "text": "Materials for teaching and replication.\n\n📘 Tutorial: https://nikitakhokhlov.github.io/lss_workshop_ucd/lss_tutorial.html\n📊 Slides: https://nikitakhokhlov.github.io/lss_workshop_ucd//lss_slides.html"
   }
 ]
