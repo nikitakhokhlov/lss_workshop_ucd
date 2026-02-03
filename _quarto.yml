@@ -9,7 +9,7 @@ website:
       - text: "Tutorial"
         href: tutorial/lss_tutorial.qmd
       - text: "Slides"
-        href: slides/lss_slides.qmd
+        href: slides/lss_slides.html
 
 format:
   html:
