@@ -158,6 +158,6 @@
     "href": "index.html",
     "title": "Introduction to Latent Semantic Scaling",
     "section": "",
-    "text": "Materials for teaching and replication.\n\n📘 Tutorial: https://nikitakhokhlov.github.io/lss_workshop_ucd/lss_tutorial.html\n📊 Slides: https://nikitakhokhlov.github.io/lss_workshop_ucd//lss_slides.html"
+    "text": "Materials for teaching and replication.\n\n📘 Tutorial: https://nikitakhokhlov.github.io/lss_workshop_ucd/lss_tutorial.html\n🛠️ Materials for tutorial (to run the code locally): https://github.com/nikitakhokhlov/lss_workshop_ucd/tree/main/tutorial\n📊 Slides: https://nikitakhokhlov.github.io/lss_workshop_ucd//lss_slides.html"
   }
 ]

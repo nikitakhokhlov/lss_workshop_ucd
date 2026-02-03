@@ -11,6 +11,6 @@ date-format: long
 
 Materials for teaching and replication.
 
-- 📘 Tutorial: https://nikitakhokhlov.github.io/lss_workshop_ucd/lss_tutorial.html
-- 📊 Slides: https://nikitakhokhlov.github.io/lss_workshop_ucd//lss_slides.html
-
+-   📘 Tutorial: <https://nikitakhokhlov.github.io/lss_workshop_ucd/lss_tutorial.html>
+-   🛠️ Materials for tutorial (to run the code locally): <https://github.com/nikitakhokhlov/lss_workshop_ucd/tree/main/tutorial>
+-   📊 Slides: <https://nikitakhokhlov.github.io/lss_workshop_ucd//lss_slides.html>
