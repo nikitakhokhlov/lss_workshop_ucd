@@ -1,0 +1,674 @@
+---
+title: "Introduction to Latent Semantic Scaling"
+format: html
+editor: visual
+author:
+  - name: "Nikita Khokhlov"
+    email: "nikita.khokhlov@ucd.ie"
+institute: "University College Dublin"
+date: "4 February 2026"
+date-format: long
+bibliography: references.bib
+---
+
+## Introduction
+
+**Latent Semantic Scaling (LSS)** @watanabe2021 is a semi-supervised word-embedding scaling technique that allows to locate documents on pre-defined dimensions of your interest. The user provides *seed words* to define the scale (e.g., sentiment, hostility). Then, the algorithm estimates polarity of words in the corpus and locates documents on a unidimensional scale.
+
+This tutorial is drawing on the tutorials by Kohei Watanabe: [Introduction to LSX](https://koheiw.github.io/LSX/articles/pkgdown/introduction.html) and [Latent Semantic Scaling](https://tutorials.quanteda.io/machine-learning/lss/).
+
+## Installation
+
+From CRAN:
+
+```{r}
+#install.packages("LSX")
+```
+
+From Github:
+
+```{r}
+#devtools::install_github("koheiw/LSX")
+```
+
+```{r}
+#install.packages(c('quanteda', 'quanteda.corpora', 
+#           'quanteda.textstats', 'quanteda.textplots', 
+#           'dplyr', 'ggplot2', 'geomtextpath', 'wordcloud', 
+#           'plm', 'modelsummary'))
+```
+
+## Loading required packages
+
+```{r}
+packs <- c('LSX', 'quanteda', 'quanteda.corpora', 
+           'quanteda.textstats', 'quanteda.textplots', 
+           'dplyr', 'ggplot2', 'geomtextpath', 'wordlcloud', 
+           'plm', 'modelsummary')
+
+# Install missing packages
+#installed <- packs %in% rownames(installed.packages())
+#if (any(!installed)) install.packages(packs[!installed])
+
+lapply(packs, require, character.only = TRUE)
+```
+
+## Corpus 1: Russian propaganda on Ukraine
+
+### Preparing the text corpus
+
+We will first work with the corpus of news from the Russian propaganda outlet Sputnik contaning the word `Ukraine` in 2022, provided by Kohei Watanabe: [download here](https://www.dropbox.com/s/abme18nlrwxgmz8/data_corpus_sputnik2022.rds?dl=1) (save it in the same working directory as this .qmd file).
+
+```{r}
+corp <- readRDS("data/data_corpus_sputnik2022.rds")
+```
+
+Check the number of documents in the text corpus:
+
+```{r}
+ndoc(corp)
+```
+
+Let's check the first text:
+
+```{r}
+as.character(corp)[1]
+```
+
+Reshape the corpus to sentences, tokenize and pre-process it: remove punctuation, non-textual symbols, numbers, URLs, and English stop words (grammatical words that appear often in the text):
+
+```{r}
+corp_sent <- corpus_reshape(corp, to =  "sentences") # reshape to sentences
+
+toks_sent <- corp_sent %>%
+    tokens(remove_punct = TRUE, remove_symbols = TRUE,  
+           remove_numbers = TRUE, remove_url = TRUE) %>% 
+    tokens_remove(stopwords("en"))
+```
+
+Create a document-feature matrix:
+
+```{r}
+dfmt <- dfm(toks_sent) |> 
+    dfm_remove(pattern = "") |> # remove space from the DFM
+    dfm_trim(min_termfreq = 5) # trim the DFM from the features that rarely appear (e.g., less than 5 times across all documents)
+```
+
+### Example 1: Sentiment
+
+First, let's evaluate the general sentiment of Russian news articles on Ukraine over 2022.
+
+`data_dictionary_sentiment` is the built-in dictionary of sentiment seed words.
+
+[`as.seedwords()`](https://koheiw.github.io/LSX/reference/as.seedwords.html) converts the dictionary object to a named numeric vector, in which numbers indicate seed words’ polarity (positive: 1 or negative: -1).
+
+```{r}
+seed_sentiment <- LSX::as.seedwords(data_dictionary_sentiment)
+print(seed_sentiment)
+```
+
+[`textmodel_lss()`](https://koheiw.github.io/LSX/reference/textmodel_lss.html) computes the polarity scores of all the words in the corpus based on their semantic similarity to the seed words.
+
+```{r}
+lss_sentiment <- textmodel_lss(dfmt, seeds = seed_sentiment)
+```
+
+Let's take a look at the top-20 words associated with the "positive" pole.
+
+```{r}
+as.data.frame(head(coef(lss_sentiment), 20))
+```
+
+Now see top-20 words associated with the "negative" pole.
+
+```{r}
+as.data.frame(tail(coef(lss_sentiment), 20))
+```
+
+You can visualize the polarity of words using [`textplot_terms()`](https://koheiw.github.io/LSX/reference/textplot_terms.html).
+
+When `highlighted = NULL` (default option), \`textplot_terms\` randomly samples 50 words and highlights them.
+
+```{r}
+textplot_terms(lss_sentiment)
+```
+
+You can also manually specify which words (or emoji) to highlight. You can pass glob patterns to `highlighted` if you want.
+
+```{r}
+textplot_terms(lss_sentiment, highlighted = c('biden', 'putin', names(seed_sentiment)))
+```
+
+Before predicting polarity of documents, we should reconstruct original full texts of articles from their sentences using `dfm_group()`.
+
+```{r}
+dfmt_doc <- dfm_group(dfmt)
+dat <- docvars(dfmt_doc)
+dat$docname <- docnames(dfmt_doc)
+print(nrow(dat))
+```
+
+Overall, we have 8,063 documents - news articles in English containing the word `Ukraine` from the Russian propaganda outlet Sputnik, over 2022.
+
+Note that we can also run the initial [`textmodel_lss()`](https://koheiw.github.io/LSX/reference/textmodel_lss.html) estimation with non-default parameters.
+
+-   When both `include_data` and `group_data` are `TRUE` (both `FALSE` by default), it internally applies [`dfm_group()`](https://quanteda.io/reference/dfm_group.html) to `x` to group the sentences into the original documents, effectively reversing the segmentation by [`corpus_reshape()`](https://quanteda.io/reference/corpus_reshape.html), and save a grouped DFM in the LSS object as `lss_sentiment$data`. In such a case, we do not need to "reconstruct" original full texts from sentences, as we did above.
+
+-   If `cache = TRUE` (`FALSE` by default), an intermediate object is saved in a folder `lss_cache` in the working directory.
+
+-   `k = 300` (by default) is the number of singular values requested to the singular value decomposition (SVD) engine.
+
+    -   [@watanabe2021, p.88]: "The literature suggests that the optimal value of k in SVD is around 200–300 for synonym identification".
+
+    -   See also the *"Hyperparameter Optimization"* section in [@watanabe2021, pp.96-97]
+
+```{r}
+lss_sentiment2 <- textmodel_lss(dfmt, seeds = seed_sentiment, 
+                               k = 300, 
+                               include_data = TRUE, 
+                               group_data = TRUE,
+                               cache = TRUE)
+```
+
+Now, let's predict polarity of documents.
+
+```{r}
+dat$lss_sentiment <- predict(lss_sentiment, newdata = dfmt_doc)
+```
+
+To visualize the polarity of documents, you need first to smooth their scores using [`smooth_lss()`](https://koheiw.github.io/LSX/reference/smooth_lss.html)[^1].
+
+[^1]: `engine` should be “[locfit](https://cran.r-project.org/package=locfit)” when the data frame has more than 10 thousands scores.
+
+```{r}
+smo <- smooth_lss(dat, lss_var = "lss_sentiment", date_var = "date")
+```
+
+Now, we visualize the sentiment of news articles over time, with 95% confidence intervals.
+
+```{r}
+ggplot(smo, aes(x = date, y = fit)) + 
+    geom_line() +
+    geom_ribbon(aes(ymin = fit - se.fit * 1.96, ymax = fit + se.fit * 1.96), alpha = 0.1) +
+    geom_vline(xintercept = as.Date("2022-02-24"), linetype = "dotted") +
+    scale_x_date(date_breaks = "months", date_labels = "%b") +
+    labs(title = "Sentiment about articles on Ukraine", x = "Date", y = "Sentiment") +
+    theme_bw()
+```
+
+### Example 2: Hostility towards Ukraine
+
+Following @trubowitz2021, we can estimate hostility towards Ukraine expressed in the Sputnik articles in 2022. You can [download](https://github.com/koheiw/LSX/blob/master/vignettes/pkgdown/dictionary.yml) the hostility dictionary file from the Github repository.
+
+```{r}
+dict <- dictionary(file = "data/dictionary_hostility.yml") 
+print(dict$hostility)
+```
+
+We convert the dictionary into a named numeric vector, in which numbers indicate seed words’ polarity.
+
+```{r}
+hostility <- as.seedwords(dict$hostility)
+```
+
+To target hostility towards Ukraine, you should assign polarity scores only to words that occur around “ukrain\*” as its modifiers. You can collect such words using [`char_context()`](https://koheiw.github.io/LSX/reference/textstat_context.html) and pass them to [`textmodel_lss()`](https://koheiw.github.io/LSX/reference/textmodel_lss.html) through `terms`.
+
+`group_data` is set to `FALSE` because we want to analyze each sentence in this example.
+
+```{r, cache=TRUE}
+term <- toks_sent |> char_context(pattern = "ukrain*", p = 0.01)
+lss_hostility <- textmodel_lss(dfmt, seeds = hostility, terms = term, 
+                               include_data = TRUE)
+```
+
+```{r}
+as.data.frame(head(coef(lss_hostility), 10))
+```
+
+```{r}
+as.data.frame(tail(coef(lss_hostility), 10))
+```
+
+```{r}
+textplot_terms(lss_hostility)
+```
+
+We can compute the polarity scores of documents using [`predict()`](https://rdrr.io/r/stats/predict.html) with `min_n` to avoid short sentences to receive extremely large negative or positive scores (i.e. outliers).
+
+[`predict()`](https://rdrr.io/r/stats/predict.html) tends to return extreme scores for short sentences because it computes the polarity of documents based on the polarity of words weighted by their frequency. To prevent a small number of words from determining the document scores, we set `min_n = 15`, which is roughly the first quantile of the sentence lengths.
+
+```{r}
+dat2 <- docvars(lss_hostility$data)
+quantile(ntoken(lss_hostility$data))
+
+dat2$lss_hostility <- predict(lss_hostility, min_n = 15)
+```
+
+You can use [`smooth_lss()`](https://koheiw.github.io/LSX/reference/smooth_lss.html) to visualize the scores, but `engine` should be “[locfit](https://cran.r-project.org/package=locfit)” when the data frame has more than 10 thousands scores.
+
+```{r}
+smo2 <- smooth_lss(dat2, lss_var = "lss_hostility", date_var = "date", engine = "locfit")
+```
+
+Now, let's visualize hostility towards Ukraine expressed in Sputnik news over 2022.
+
+```{r}
+ggplot(smo2, aes(x = date, y = fit)) + 
+    geom_line() +
+    geom_ribbon(aes(ymin = fit - se.fit * 1.96, ymax = fit + se.fit * 1.96), alpha = 0.1) +
+    geom_vline(xintercept = as.Date("2022-02-24"), linetype = "dashed") +
+    geom_vline(xintercept = as.Date("2022-09-21"), linetype = "dashed") +
+    scale_x_date(date_breaks = "months", date_labels = "%b") +
+    labs(title = "Hostility towards Ukraine", x = "Date", y = "Hostility") +
+    theme_bw() +
+    annotate(
+    "text",
+    x = as.Date("2022-02-24"),
+    y = Inf,
+    label = "Full-scale invasion",
+    size = 4,
+    vjust = 1.1,
+    hjust = -0.05) +
+    annotate("text",
+    x = as.Date("2022-09-21"),
+    y = Inf,
+    label = "Military mobilization\nin Russia",
+    size = 4,
+    vjust = 1.1,
+    hjust = -0.05
+  )
+```
+
+### Example 3: Placement on the war-related dimensions
+
+LSS works also for cases when we define the seed words for one pole of our dimension only. For instance, we have a set of words associated with a particular theme, but we do not have a set of words which would define the opposite pole for this theme. So, LSS will place documents on the scale, where we have only +1 pole, defined by our seed words.
+
+In the context of the ongoing Russia-Ukraine war, we can hypothesize that Russian propaganda articles mentioning `Ukaine` can be placed on the following latent dimensions: (1) *'International'* (2) *'Ground war operations'* (3) *'World War 2'* (the analogy between WW2 and Russian invasion of Ukraine is often used by Russian propaganda).
+
+So, we first define three dimensions of our theoretical interests with seed words.
+
+```{r}
+keywords <- list(
+    international = c("nato*", "peace*", "west*", "usa*", "europe*", "zelensk*", "biden*", "un*", "americ*", "washington*", "international*", "kyiv*", "mfa*", "russophob*", "britain*", "european*", "franc*", "nuclear*", "uk")
+,
+  ground_war = c('militar*', 'combat*', 'operat*', 'special*', 'defen*', 'arm*', 'troop*', 'service*', 'territor*', 'battalion*', 'fleet*', 'commander*', 'lieutenant*', 'airborne*', 'crew*', 'artillery*', 'paratrooper*', 'command*', 'sergeant*', 'major*', 'tank*', 'soldier*')
+,
+  wwii = c('fascis*', 'victor*', 'great*', 'histor*', 'hero*', 'nazi*', 'soviet*', 'patriot*', 'memor*', 'homeland*', 'feat*', 'leningrad*', 'stalingrad*', 'invader*', 'grandfather*', 'fallen*')
+)
+
+keywords <- dictionary(keywords)
+```
+
+Now, we run estimations of words' polarities for each dimension.
+
+```{r lss-war-models,cache=TRUE}
+lss_international <- textmodel_lss(dfmt, keywords["international"])
+
+lss_ground_war <- textmodel_lss(dfmt, keywords["ground_war"])
+
+lss_wwii <- textmodel_lss(dfmt, keywords["wwii"])
+
+```
+
+```{r}
+as.data.frame(head(coef(lss_ground_war), 10))
+```
+
+```{r}
+textplot_terms(lss_international)
+```
+
+```{r}
+textplot_terms(lss_ground_war)
+```
+
+```{r}
+textplot_terms(lss_wwii)
+```
+
+```{r}
+#dfmt_doc <- dfm_group(dfmt)
+#dat <- docvars(dfmt_doc)
+
+dat$lss_international <- predict(lss_international, newdata = dfmt_doc)
+dat$lss_ground_war <- predict(lss_ground_war, newdata = dfmt_doc)
+dat$lss_wwii <- predict(lss_wwii, newdata = dfmt_doc)
+```
+
+```{r}
+smo3 <- smooth_lss(dat, lss_var = "lss_international", date_var = "date", engine = "locfit")
+```
+
+```{r}
+ggplot(smo3, aes(x = date, y = fit)) + 
+    geom_line() +
+    geom_ribbon(aes(ymin = fit - se.fit * 1.96, ymax = fit + se.fit * 1.96), alpha = 0.1) +
+    geom_vline(xintercept = as.Date("2022-02-24"), linetype = "dashed") +
+    geom_vline(xintercept = as.Date("2022-09-21"), linetype = "dashed") +
+    scale_x_date(date_breaks = "months", date_labels = "%b") +
+    labs(title = "Engagement in Internaitonal rhetoric", x = "Date", y = "LSS International") +
+    theme_bw() +
+    annotate(
+    "text",
+    x = as.Date("2022-02-24"),
+    y = Inf,
+    label = "Full-scale invasion",
+    size = 4,
+    vjust = 1.1,
+    hjust = -0.05) +
+    annotate("text",
+    x = as.Date("2022-09-21"),
+    y = Inf,
+    label = "Military mobilization\nin Russia",
+    size = 4,
+    vjust = 1.1,
+    hjust = -0.05
+  )
+```
+
+```{r}
+smo4 <- smooth_lss(dat, lss_var = "lss_ground_war", date_var = "date", engine = "locfit")
+
+ggplot(smo4, aes(x = date, y = fit)) + 
+    geom_line() +
+    geom_ribbon(aes(ymin = fit - se.fit * 1.96, ymax = fit + se.fit * 1.96), alpha = 0.1) +
+    geom_vline(xintercept = as.Date("2022-02-24"), linetype = "dashed") +
+    geom_vline(xintercept = as.Date("2022-09-21"), linetype = "dashed") +
+    scale_x_date(date_breaks = "months", date_labels = "%b") +
+    labs(title = "Engagement in Ground war rhetoric", x = "Date", y = "LSS Ground war") +
+    theme_bw() +
+    annotate(
+    "text",
+    x = as.Date("2022-02-24"),
+    y = Inf,
+    label = "Full-scale invasion",
+    size = 4,
+    vjust = 1.1,
+    hjust = -0.05) +
+    annotate("text",
+    x = as.Date("2022-09-21"),
+    y = Inf,
+    label = "Military mobilization\nin Russia",
+    size = 4,
+    vjust = 1.1,
+    hjust = -0.05
+  )
+```
+
+```{r}
+smo5 <- smooth_lss(dat, lss_var = "lss_wwii", date_var = "date", engine = "locfit")
+
+ggplot(smo5, aes(x = date, y = fit)) + 
+    geom_line() +
+    geom_ribbon(aes(ymin = fit - se.fit * 1.96, ymax = fit + se.fit * 1.96), alpha = 0.1) +
+    geom_vline(xintercept = as.Date("2022-02-24"), linetype = "dashed") +
+  geom_vline(xintercept = as.Date("2022-05-09"), linetype = "dashed") +
+    geom_vline(xintercept = as.Date("2022-09-21"), linetype = "dashed") +
+    scale_x_date(date_breaks = "months", date_labels = "%b") +
+    labs(title = "Engagement in WW2 rhetoric", x = "Date", y = "LSS WW2") +
+    theme_bw() +
+    annotate(
+    "text",
+    x = as.Date("2022-02-24"),
+    y = Inf,
+    label = "Full-scale invasion",
+    size = 4,
+    vjust = 1.1,
+    hjust = -0.05) +
+    annotate("text",
+    x = as.Date("2022-09-21"),
+    y = Inf,
+    label = "Military mobilization\nin Russia",
+    size = 4,
+    vjust = 1.1,
+    hjust = -0.05) + 
+    annotate("text",
+    x = as.Date("2022-05-09"),
+    y = Inf,
+    label = "WW2 Victory Day",
+    size = 4,
+    vjust = 2.3,
+    hjust = -0.05
+  )
+
+```
+
+We can also plot trends for all dimensions on one graph.
+
+```{r}
+# --- Make a helper function for smoothing and labeling ---
+make_smo <- function(data, lss_var, facet_label) {
+  out <- smooth_lss(data, lss_var = lss_var, date_var = "date", engine = "locfit")
+  out$facet <- facet_label
+  return(out)
+}
+
+# --- Generate all smoothed datasets ---
+smo_all <- bind_rows(
+  make_smo(dat, "lss_international", "International"),
+  make_smo(dat, "lss_ground_war", "Ground War"),
+  make_smo(dat, "lss_wwii", "WW2"),
+)
+
+smo_all$facet <- factor(
+  smo_all$facet,
+  levels = c("Ground War", "International", "WW2")
+)
+```
+
+```{r}
+ggplot(smo_all, aes(x = date, y = fit)) + 
+  geom_line() +
+  geom_ribbon(
+    aes(ymin = fit - se.fit * 1.96, ymax = fit + se.fit * 1.96),
+    alpha = 0.1, colour = NA
+  ) +
+  geom_vline(xintercept = as.Date("2022-02-24"), linetype = "dashed") +
+  geom_vline(xintercept = as.Date("2022-09-21"), linetype = "dashed") +
+  scale_x_date(date_breaks = "months", date_labels = "%b") +
+  labs(x = "Date", y = "LSS Score") +
+  theme_bw() +
+  theme(
+    axis.title.x = element_blank(),
+    strip.text = element_text(size = 14),
+    axis.text = element_text(size = 12),
+    text = element_text(size = 14)
+  ) +
+  facet_wrap(~ facet, scales = "free_y", ncol = 1) +
+
+  annotate(
+    "text",
+    x = as.Date("2022-02-24"),
+    y = Inf,
+    label = "Full-scale invasion",
+    size = 3,
+    vjust = 1.1,
+    hjust = 0.08
+  ) +
+  annotate(
+    "text",
+    x = as.Date("2022-09-21"),
+    y = Inf,
+    label = "Military mobilization",
+    size = 3,
+    vjust = 1.1,
+    hjust = 0.08
+  )
+
+```
+
+### Keyness analysis
+
+```{r}
+#texts(corp)[1:3]
+#docnames(corp)[1:3]
+#docnames(dfmt_doc)[1:3]
+dat %>% arrange(desc(lss_ground_war)) %>% select(docname) %>% slice(1)
+```
+
+```{r}
+top_ground_war <- texts(corp)[docnames(corp) == "s1097818892"]
+```
+
+```{r}
+dat %>% arrange(lss_ground_war) %>% select(docname) %>% slice(1)
+```
+
+```{r}
+tail_ground_war <- texts(corp)[docnames(corp) == "s1104348562"]
+```
+
+```{r}
+data_keyness <- data.frame(
+  text = c(top_ground_war, tail_ground_war),
+  ground_war = c('top', 'tail'),
+  stringsAsFactors = FALSE
+)
+```
+
+```{r}
+corpus_keyness <- corpus(data_keyness)
+
+tok_keyness <- quanteda::tokens(corpus_keyness, what = "word",
+              remove_punct = TRUE,
+              remove_symbols = TRUE,
+              remove_numbers = TRUE,
+              remove_url = TRUE,
+              verbose = TRUE,
+              split_hyphens = TRUE,
+              split_tags = TRUE)
+
+#toks2_keyness <- tokens_remove(tok_keyness, stopwords, padding = TRUE) 
+
+dfm_keyness <- dfm(tok_keyness, 
+           tolower = TRUE,
+           verbose = TRUE)
+
+dfm_keyness <- dfm_remove(dfm_keyness, stopwords("en"))
+
+dfm_keyness <- dfm_remove(dfm_keyness, '')
+
+dfm_keyness <- quanteda::dfm_wordstem(dfm_keyness)
+
+dfm_keyness <- quanteda::dfm_group(dfm_keyness, groups = ground_war) 
+
+```
+
+```{r}
+result_keyness <- textstat_keyness(dfm_keyness, target = "top")
+```
+
+```{r}
+textplot_keyness(result_keyness, margin = 0.4, color = c("black", "grey"), n = 10) +
+  theme(legend.position="bottom", legend.text=element_text(size=10), plot.title = element_text(hjust = 0.5)) + ggtitle("Top vs Tail on Ground war") 
+```
+
+## Corpus 2: Russian governors' addresses
+
+### Preparing the text corpus
+
+Now, we will work with the text corpus of regional legislative addresses by Russian governors in 2007-2021, in Russian, from @baturo_khokhlov_2024. The corpus can be [downloaded here](https://dataverse.harvard.edu/file.xhtml?fileId=8551062&version=1.0) (save it in the same working directory as this .qmd file).
+
+```{r}
+gov_corpus <- readRDS("data/gov_corpus.RDS")
+ndoc(gov_corpus)
+```
+
+### Example 4: Governors' engagement in Putin's agenda in Russia
+
+Dowlonad dictionary from [here](https://dataverse.harvard.edu/file.xhtml?fileId=8551063&version=1.00) (save it as `dictionary_putin.yml` in the same working directory as this .qmd file).
+
+```{r}
+dict_putin <- dictionary(file = "data/dictionary_putin.yml")
+```
+
+```{r}
+dict_putin["putin_agenda2"]
+```
+
+Prepare dfm for the analysis.
+
+```{r}
+toks2 <- gov_corpus %>% 
+    corpus_reshape("sentences") %>% 
+    tokens(remove_punct = TRUE) %>% 
+    tokens_remove(pattern = stopwords("ru", source = "snowball")) 
+dfmt2 <- toks2 %>% 
+    dfm() %>%
+    dfm_select("^\\p{L}+$", valuetype = "regex", min_nchar = 2) %>% 
+    dfm_trim(min_termfreq = 5)
+
+dfmt2 <- dfm_remove(dfmt2, "")
+    
+dfmt2 <- dfm_wordstem(dfmt2, language = "russian")
+```
+
+Calculate polarity scores for words on the "putin_agenda" dimension.
+
+```{r}
+putin_agenda <- textmodel_lss(dfmt2, dict_putin["putin_agenda2"], cache = FALSE)
+```
+
+Save top terms associated with seed words defining Putin's agenda.
+
+```{r}
+cloud <- head(coef(putin_agenda), 100)
+cloud<-as.data.frame(cloud)
+cloud$word <- rownames(cloud)
+```
+
+Visualize the word cloud for top terms associated with Putins' agenda.
+
+```{r}
+library(wordcloud)
+wordcloud(cloud$word,cloud$cloud,scale=c(2,0.1),random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, max.words=60)
+```
+
+```{r}
+textplot_terms(putin_agenda, highlighted = c('эконом*', 'америк*', 'социал*', 'полит*', dict_putin["putin_agenda2"]))
+```
+
+Now, let's calculate polarity scores for documents.
+
+```{r}
+dat  <- docvars(dfmt)
+dat$putin_agenda <- predict(putin_agenda, newdata = dfmt)
+```
+
+### Example 5: LSS Scores in regression models
+
+Let's download the dataset with lss scores and speaker-level and region-level covariates used in @baturo_khokhlov_2024.
+
+```{r}
+df <- readRDS("data/data_governors.rds")
+```
+
+We use LSS scores as a dependent variable (`lss_putinagenda2`) in a regression model with governor- and region-level covariates.
+
+```{r}
+m1 <- plm(lss_putinagenda2 ~  lognextdays + preselec_window + transfers_log + aftercrimea + reg_deputies_ur_share + reg_grp_pc_log + gov_background_main_business + appointed_first_by_putin_bin + siloviki , data = df[ which(!complete.cases(df$noposlanie) & !complete.cases(df$written)), ], effect = "individual", model = "within", index='region')
+```
+
+```{r}
+modelsummary(
+  m1,
+  statistic = "({std.error})",
+  stars = TRUE,
+  output = "gt",
+  gof_omit = "IC|Log|Adj",
+  coef_map = c(
+    lognextdays = "Log days to election",
+    preselec_window = "Pre-election window",
+    transfers_log = "Log federal transfers",
+    aftercrimea = "Post-Crimea",
+    reg_deputies_ur_share = "UR deputies share",
+    reg_grp_pc_log = "Log GRP per capita",
+    gov_background_main_business = "Governor business background",
+    appointed_first_by_putin_bin = "First appointed by Putin",
+    siloviki = "Siloviki background"
+  )
+)
+
+```
+
+## References
