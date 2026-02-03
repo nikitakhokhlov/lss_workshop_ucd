@@ -1,0 +1,16 @@
+project:
+  type: website
+  output-dir: docs
+
+website:
+  title: "Latent Semantic Scaling Tutorial"
+  navbar:
+    left:
+      - text: "Tutorial"
+        href: tutorial/lss_tutorial.qmd
+      - text: "Slides"
+        href: slides/lss_slides.qmd
+
+format:
+  html:
+    theme: cosmo
