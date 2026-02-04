@@ -31,6 +31,8 @@ From Github:
 #devtools::install_github("koheiw/LSX")
 ```
 
+Uncomment to install other packages used in the tutorial.
+
 ```{r}
 #install.packages(c('quanteda', 'quanteda.corpora', 
 #           'quanteda.textstats', 'quanteda.textplots', 
@@ -41,14 +43,12 @@ From Github:
 ## Loading required packages
 
 ```{r}
+#| warning: false
+#| message: false
 packs <- c('LSX', 'quanteda', 'quanteda.corpora', 
            'quanteda.textstats', 'quanteda.textplots', 
-           'dplyr', 'ggplot2', 'geomtextpath', 'wordlcloud', 
+           'dplyr', 'ggplot2', 'geomtextpath', 'wordcloud', 
            'plm', 'modelsummary')
-
-# Install missing packages
-#installed <- packs %in% rownames(installed.packages())
-#if (any(!installed)) install.packages(packs[!installed])
 
 lapply(packs, require, character.only = TRUE)
 ```
